@@ -138,6 +138,15 @@
       right: 18px;
       bottom: 18px;
       z-index: 50;
+      display: grid;
+      gap: 8px;
+      justify-items: end;
+    }
+
+    .floating-actions {
+      display: grid;
+      gap: 8px;
+      justify-items: end;
     }
 
     .jump-menu {
@@ -154,14 +163,24 @@
       z-index: 30;
     }
 
-    #menuToggle {
+    .floating-actions button {
       min-width: 46px;
       min-height: 46px;
       border-radius: 999px;
-      background: var(--accent);
-      border-color: var(--accent-2);
       box-shadow: var(--shadow);
       font-weight: 800;
+    }
+
+    #floatingCopyFinal {
+      min-width: 86px;
+      background: var(--accent);
+      border-color: var(--accent-2);
+      color: white;
+    }
+
+    #menuToggle {
+      background: var(--accent);
+      border-color: var(--accent-2);
     }
 
     .jump-menu.show {
@@ -185,9 +204,17 @@
 
     main {
       display: grid;
-      grid-template-columns: minmax(230px, .78fr) minmax(420px, 1.45fr) minmax(260px, .9fr);
+      grid-template-columns: minmax(260px, .9fr) minmax(430px, 1.35fr) minmax(300px, .95fr);
+      align-items: start;
       gap: 14px;
       padding: 14px clamp(10px, 2vw, 24px) 24px;
+    }
+
+    .layout-column {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+      min-width: 0;
     }
 
     aside,
@@ -375,13 +402,6 @@
       gap: 7px;
     }
 
-    .bottom-area {
-      grid-column: 1 / -1;
-      display: grid;
-      grid-template-columns: minmax(280px, .9fr) minmax(320px, 1.1fr);
-      gap: 14px;
-    }
-
     .output-box {
       min-height: 128px;
       white-space: pre-wrap;
@@ -445,13 +465,9 @@
       overflow-wrap: anywhere;
     }
 
-    .dictionary-area {
-      grid-column: 1 / -1;
-    }
-
     .dictionary-toolbar {
       display: grid;
-      grid-template-columns: 130px repeat(3, minmax(150px, 1fr));
+      grid-template-columns: 1fr 1fr;
       gap: 8px;
     }
 
@@ -464,20 +480,20 @@
     .dictionary-results {
       display: grid;
       gap: 8px;
-      max-height: 360px;
+      max-height: 460px;
       overflow: auto;
       padding-right: 2px;
     }
 
     .dictionary-row {
       display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
       align-items: center;
       border: 1px solid rgba(55, 65, 81, .78);
       border-radius: 8px;
       background: rgba(15, 23, 42, .48);
-      padding: 10px;
+      padding: 8px 9px;
       text-align: left;
     }
 
@@ -486,20 +502,36 @@
       cursor: pointer;
     }
 
-    .dictionary-name {
+    .dictionary-topline {
       display: flex;
-      flex-wrap: wrap;
       gap: 6px;
       align-items: center;
+      min-width: 0;
+    }
+
+    .dictionary-label {
       font-weight: 800;
-      overflow-wrap: anywhere;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .dictionary-meta {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .tag-code {
+      display: block;
+      margin-top: 2px;
       color: #ddd6fe;
       font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
       font-size: 12px;
-      overflow-wrap: anywhere;
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .badge {
@@ -521,7 +553,8 @@
     }
 
     .star-btn {
-      min-width: 36px;
+      min-width: 38px;
+      min-height: 38px;
       padding: 5px 8px;
       font-size: 16px;
       line-height: 1;
@@ -539,11 +572,13 @@
 
     @media (max-width: 1120px) {
       main {
-        grid-template-columns: minmax(240px, .85fr) minmax(420px, 1.15fr);
+        grid-template-columns: minmax(280px, .9fr) minmax(420px, 1.2fr);
       }
 
       .right-column {
         grid-column: 1 / -1;
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
       }
     }
 
@@ -561,14 +596,14 @@
       }
 
       main,
-      .bottom-area,
       .dictionary-toolbar,
       .split-row {
         grid-template-columns: 1fr;
       }
 
-      .bottom-area,
+      .layout-column,
       .right-column {
+        grid-template-columns: 1fr;
         grid-column: auto;
       }
 
@@ -604,15 +639,13 @@
       <div class="muted">過去プロンプトの整理、辞書検索、保存タグをブラウザ内で管理</div>
       <div class="muted">使い方：過去プロンプトを貼り付け → タグ整理 → 整理結果を反映 → 編集して最終プロンプトをコピー</div>
     </div>
-    <div class="header-actions">
-      <button class="primary" id="copyFinalTop" type="button">最終をコピー</button>
-      <button id="exportData" type="button">JSONエクスポート</button>
-      <button id="resetBuilder" type="button">ビルダー初期化</button>
-    </div>
   </header>
 
   <div class="menu-wrap">
-    <button id="menuToggle" type="button" aria-label="メニュー" aria-expanded="false" aria-controls="jumpMenu">☰</button>
+    <div class="floating-actions">
+      <button id="floatingCopyFinal" type="button" class="primary">最終コピー</button>
+      <button id="menuToggle" type="button" aria-label="メニュー" aria-expanded="false" aria-controls="jumpMenu">☰</button>
+    </div>
     <nav class="jump-menu" id="jumpMenu" aria-label="画面内メニュー">
       <a href="#pastePanel">タグ貼り付け整理</a>
       <a href="#savedTagsPanel">保存タグ</a>
@@ -620,11 +653,13 @@
       <a href="#promptPanel">プロンプト編集</a>
       <a href="#outputPanel">最終出力</a>
       <a href="#characterPanel">プロンプトメモ</a>
+      <a href="#backupPanel">バックアップ</a>
     </nav>
   </div>
 
   <main>
-    <section class="tool-panel dictionary-area" id="pastePanel">
+    <div class="layout-column left-column">
+    <section class="tool-panel" id="pastePanel">
       <div class="panel-head">
         <h2>タグ貼り付け整理</h2>
       </div>
@@ -663,7 +698,7 @@
       </div>
     </aside>
 
-    <section class="tool-panel dictionary-area" id="dictionaryPanel">
+    <section class="tool-panel" id="dictionaryPanel">
       <div class="panel-head">
         <h2>検索式タグ辞書</h2>
         <div class="muted" id="dictionaryStats"></div>
@@ -686,7 +721,7 @@
           </select>
         </div>
         <div class="dictionary-search-row">
-          <input id="dictionarySearch" type="search" placeholder="フリーワード検索（サブ）: 日本語・英語・別名">
+          <input id="dictionarySearch" type="search" placeholder="フリーワード検索：日本語・英語・別名・ジャンル">
         </div>
         <div id="dictionaryResults" class="dictionary-results"></div>
         <details>
@@ -707,7 +742,9 @@
         </details>
       </div>
     </section>
+    </div>
 
+    <div class="layout-column center-column">
     <section class="tool-panel" id="promptPanel">
       <div class="panel-head">
         <h2>プロンプト編集</h2>
@@ -717,7 +754,9 @@
       </div>
       <div class="panel-body stack" id="sections"></div>
     </section>
+    </div>
 
+    <div class="layout-column right-column">
     <section class="tool-panel" id="outputPanel">
       <div class="panel-head">
         <h2>最終出力</h2>
@@ -730,11 +769,6 @@
           <button id="dedupeAll" type="button">全体の重複削除</button>
         </div>
         <textarea id="negativePrompt" class="output-box" readonly></textarea>
-        <div class="split-row">
-          <input id="importFile" class="file-input" type="file" accept="application/json,.json">
-          <button id="importData" type="button">JSONインポート</button>
-        </div>
-        <div class="muted">データはこのブラウザ内に保存されます。サーバーには送信されません。ブラウザデータを削除すると保存内容も消えるため、重要な辞書やメモはJSONエクスポートでバックアップしてください。</div>
       </div>
     </section>
 
@@ -752,6 +786,21 @@
         <div id="charactersList" class="characters-list"></div>
       </div>
     </aside>
+
+    <section class="tool-panel" id="backupPanel">
+      <div class="panel-head">
+        <h2>バックアップ</h2>
+      </div>
+      <div class="panel-body stack">
+        <button id="exportData" type="button">バックアップJSONエクスポート</button>
+        <div class="split-row">
+          <input id="importFile" class="file-input" type="file" accept="application/json,.json">
+          <button id="importData" type="button">バックアップJSONインポート</button>
+        </div>
+        <div class="muted">データはこのブラウザ内に保存されます。ブラウザデータを削除すると保存内容も消えるため、重要な辞書やプロンプトメモはバックアップJSONを書き出してください。</div>
+      </div>
+    </section>
+    </div>
   </main>
 
   <footer>
@@ -1490,15 +1539,19 @@
         const row = document.createElement("div");
         row.className = "dictionary-row";
         const favorite = state.favoriteTagIds.includes(entry.id);
+        const meta = [entry.genre, entry.subgenre1, entry.subgenre2].filter(Boolean).join(" / ");
+        const title = [
+          entry.description,
+          ...(entry.aliases || [])
+        ].filter(Boolean).join(" / ");
         row.innerHTML = `
-          <div class="dictionary-main" data-add-dictionary="${entry.id}">
-            <div class="dictionary-name">
-              <span>${escapeHtml(entry.japanese)}</span>
-              <span class="badge">${escapeHtml(entry.category)}</span>
+          <div class="dictionary-main" data-add-dictionary="${entry.id}" title="${escapeHtml(title)}">
+            <div class="dictionary-topline">
+              <span class="dictionary-label">${escapeHtml(entry.japanese)}</span>
               <span class="badge ${entry.safety === "nsfw" ? "nsfw" : ""}">${entry.safety === "nsfw" ? "NSFW" : "一般"}</span>
             </div>
             <div class="tag-code">${escapeHtml(entry.tag)}</div>
-            <div class="muted">${escapeHtml([entry.description, ...(entry.aliases || [])].filter(Boolean).join(" / "))}</div>
+            <div class="muted dictionary-meta">${escapeHtml(meta)}</div>
           </div>
           <button class="star-btn ${favorite ? "active" : ""}" type="button" data-favorite-dictionary="${entry.id}" title="お気に入り">★</button>
         `;
@@ -2011,7 +2064,7 @@
       });
 
       els.copyFinal.addEventListener("click", () => copyText(els.finalPrompt.value, "最終プロンプトをコピーしました"));
-      els.copyFinalTop.addEventListener("click", () => copyText(els.finalPrompt.value, "最終プロンプトをコピーしました"));
+      els.floatingCopyFinal.addEventListener("click", () => copyText(els.finalPrompt.value, "最終プロンプトをコピーしました"));
       els.copyNegative.addEventListener("click", () => copyText(els.negativePrompt.value, "ネガティブをコピーしました"));
       els.dedupeAll.addEventListener("click", () => {
         sectionDefs.forEach(([key]) => {
@@ -2026,7 +2079,6 @@
       });
       els.exportData.addEventListener("click", exportData);
       els.importData.addEventListener("click", importData);
-      els.resetBuilder.addEventListener("click", resetBuilder);
       els.resetPromptSections.addEventListener("click", resetPromptSections);
       els.menuToggle.addEventListener("click", () => {
         const show = !els.jumpMenu.classList.contains("show");
@@ -2049,14 +2101,14 @@
 
     function boot() {
       [
-        "toast", "menuToggle", "jumpMenu", "sections", "quickTags", "favoriteTags", "recentTags", "quickCategory", "quickNewTag", "tagSearch",
+        "toast", "floatingCopyFinal", "menuToggle", "jumpMenu", "sections", "quickTags", "favoriteTags", "recentTags", "quickCategory", "quickNewTag", "tagSearch",
         "dictionaryStats", "dictionarySearch", "dictionarySafetyFilter", "dictionaryGenreFilter", "dictionarySubgenre1Filter", "dictionarySubgenre2Filter",
         "dictionaryResults", "dictionaryInput", "dictionaryFile", "appendDictionary", "replaceDictionary", "loadDictionaryFile", "resetDictionary",
         "finalPrompt", "negativePrompt", "charactersList",
         "characterName", "characterMemo", "saveCharacter", "overwriteCharacter",
         "organizeTags", "applyOrganized", "copyOrganized", "pasteInput", "organizeSummary",
-        "copyFinal", "copyFinalTop", "copyNegative", "dedupeAll", "exportData",
-        "importFile", "importData", "resetBuilder", "resetPromptSections", "addQuickTag", "removeQuickTag"
+        "copyFinal", "copyNegative", "dedupeAll", "exportData",
+        "importFile", "importData", "resetPromptSections", "addQuickTag", "removeQuickTag"
       ].forEach((id) => {
         els[id] = document.getElementById(id);
       });
