@@ -615,11 +615,11 @@
     <button id="menuToggle" type="button" aria-label="メニュー" aria-expanded="false" aria-controls="jumpMenu">☰</button>
     <nav class="jump-menu" id="jumpMenu" aria-label="画面内メニュー">
       <a href="#pastePanel">タグ貼り付け整理</a>
-      <a href="#savedTagsPanel">お気に入り・最近</a>
+      <a href="#savedTagsPanel">保存タグ</a>
+      <a href="#dictionaryPanel">タグ辞書</a>
       <a href="#promptPanel">プロンプト編集</a>
       <a href="#outputPanel">最終出力</a>
       <a href="#characterPanel">プロンプトメモ</a>
-      <a href="#dictionaryPanel">タグ辞書</a>
     </nav>
   </div>
 
@@ -663,6 +663,51 @@
       </div>
     </aside>
 
+    <section class="tool-panel dictionary-area" id="dictionaryPanel">
+      <div class="panel-head">
+        <h2>検索式タグ辞書</h2>
+        <div class="muted" id="dictionaryStats"></div>
+      </div>
+      <div class="panel-body stack">
+        <div class="dictionary-toolbar">
+          <select id="dictionarySafetyFilter">
+            <option value="all">一般+NSFW</option>
+            <option value="general" selected>一般のみ</option>
+            <option value="nsfw">NSFWのみ</option>
+          </select>
+          <select id="dictionaryGenreFilter">
+            <option value="all">全ジャンル</option>
+          </select>
+          <select id="dictionarySubgenre1Filter">
+            <option value="all">全サブジャンル1</option>
+          </select>
+          <select id="dictionarySubgenre2Filter">
+            <option value="all">全サブジャンル2</option>
+          </select>
+        </div>
+        <div class="dictionary-search-row">
+          <input id="dictionarySearch" type="search" placeholder="フリーワード検索（サブ）: 日本語・英語・別名">
+        </div>
+        <div id="dictionaryResults" class="dictionary-results"></div>
+        <details>
+          <summary>辞書データを貼り付けて読み込み</summary>
+          <div class="stack" style="padding: 0 10px 12px;">
+            <textarea id="dictionaryInput" style="min-height: 120px;" placeholder="推奨CSV形式:&#10;ジャンル,サブジャンル1,サブジャンル2,ラベル,プロンプト,分類&#10;背景,水辺・海,,海,ocean,general&#10;&#10;簡易形式:&#10;ローアングル, 下から -> from below&#10;通常立ち絵 -> standing, solo"></textarea>
+            <div class="button-row">
+              <button class="primary" id="appendDictionary" type="button">辞書に追加</button>
+              <button id="replaceDictionary" type="button">辞書を置き換え</button>
+              <button class="danger" id="resetDictionary" type="button">辞書を空にする</button>
+            </div>
+            <div class="split-row">
+              <input id="dictionaryFile" class="file-input" type="file" accept=".csv,text/csv,application/json,.json,.txt,text/plain">
+              <button id="loadDictionaryFile" type="button">ファイルから読み込み</button>
+            </div>
+            <div class="muted">CSV / JSON / 簡易形式に対応。推奨CSV形式は「ジャンル,サブジャンル1,サブジャンル2,ラベル,プロンプト,分類」。分類は general / nsfw を使用します。プロンプト列はカンマ区切りの複数タグにも対応します。読み込んだ辞書は、タグ検索・お気に入り登録・最近使ったタグ・貼り付け整理時の分類補助に使われます。</div>
+          </div>
+        </details>
+      </div>
+    </section>
+
     <section class="tool-panel" id="promptPanel">
       <div class="panel-head">
         <h2>プロンプト編集</h2>
@@ -673,90 +718,40 @@
       <div class="panel-body stack" id="sections"></div>
     </section>
 
-    <div class="right-column stack">
-      <section class="tool-panel" id="outputPanel">
-        <div class="panel-head">
-          <h2>最終出力</h2>
+    <section class="tool-panel" id="outputPanel">
+      <div class="panel-head">
+        <h2>最終出力</h2>
+      </div>
+      <div class="panel-body stack">
+        <textarea id="finalPrompt" class="output-box" readonly></textarea>
+        <div class="button-row">
+          <button class="primary" id="copyFinal" type="button">最終プロンプトをコピー</button>
+          <button id="copyNegative" type="button">ネガティブをコピー</button>
+          <button id="dedupeAll" type="button">全体の重複削除</button>
         </div>
-        <div class="panel-body stack">
-          <textarea id="finalPrompt" class="output-box" readonly></textarea>
-          <div class="button-row">
-            <button class="primary" id="copyFinal" type="button">最終プロンプトをコピー</button>
-            <button id="copyNegative" type="button">ネガティブをコピー</button>
-            <button id="dedupeAll" type="button">全体の重複削除</button>
-          </div>
-          <textarea id="negativePrompt" class="output-box" readonly></textarea>
-          <div class="split-row">
-            <input id="importFile" class="file-input" type="file" accept="application/json,.json">
-            <button id="importData" type="button">JSONインポート</button>
-          </div>
-          <div class="muted">データはこのブラウザ内に保存されます。サーバーには送信されません。ブラウザデータを削除すると保存内容も消えるため、重要な辞書やメモはJSONエクスポートでバックアップしてください。</div>
+        <textarea id="negativePrompt" class="output-box" readonly></textarea>
+        <div class="split-row">
+          <input id="importFile" class="file-input" type="file" accept="application/json,.json">
+          <button id="importData" type="button">JSONインポート</button>
         </div>
-      </section>
+        <div class="muted">データはこのブラウザ内に保存されます。サーバーには送信されません。ブラウザデータを削除すると保存内容も消えるため、重要な辞書やメモはJSONエクスポートでバックアップしてください。</div>
+      </div>
+    </section>
 
-      <aside id="characterPanel">
-        <div class="panel-head">
-          <h2>プロンプトメモ</h2>
+    <aside id="characterPanel">
+      <div class="panel-head">
+        <h2>プロンプトメモ</h2>
+      </div>
+      <div class="panel-body stack">
+        <input id="characterName" type="text" placeholder="メモ名">
+        <textarea id="characterMemo" placeholder="メモ"></textarea>
+        <div class="button-row">
+          <button class="primary" id="saveCharacter" type="button">現在のプロンプトを保存</button>
+          <button id="overwriteCharacter" type="button">上書き保存</button>
         </div>
-        <div class="panel-body stack">
-          <input id="characterName" type="text" placeholder="メモ名">
-          <textarea id="characterMemo" placeholder="メモ"></textarea>
-          <div class="button-row">
-            <button class="primary" id="saveCharacter" type="button">現在のプロンプトを保存</button>
-            <button id="overwriteCharacter" type="button">上書き保存</button>
-          </div>
-          <div id="charactersList" class="characters-list"></div>
-        </div>
-      </aside>
-    </div>
-
-    <div class="bottom-area">
-      <section class="tool-panel dictionary-area" id="dictionaryPanel">
-        <div class="panel-head">
-          <h2>検索式タグ辞書</h2>
-          <div class="muted" id="dictionaryStats"></div>
-        </div>
-        <div class="panel-body stack">
-          <div class="dictionary-toolbar">
-            <select id="dictionarySafetyFilter">
-              <option value="all">一般+NSFW</option>
-              <option value="general" selected>一般のみ</option>
-              <option value="nsfw">NSFWのみ</option>
-            </select>
-            <select id="dictionaryGenreFilter">
-              <option value="all">全ジャンル</option>
-            </select>
-            <select id="dictionarySubgenre1Filter">
-              <option value="all">全サブジャンル1</option>
-            </select>
-            <select id="dictionarySubgenre2Filter">
-              <option value="all">全サブジャンル2</option>
-            </select>
-          </div>
-          <div class="dictionary-search-row">
-            <input id="dictionarySearch" type="search" placeholder="フリーワード検索（サブ）: 日本語・英語・別名">
-          </div>
-          <div id="dictionaryResults" class="dictionary-results"></div>
-          <details>
-            <summary>辞書データを貼り付けて読み込み</summary>
-            <div class="stack" style="padding: 0 10px 12px;">
-              <textarea id="dictionaryInput" style="min-height: 120px;" placeholder="推奨CSV形式:&#10;ジャンル,サブジャンル1,サブジャンル2,ラベル,プロンプト,分類&#10;背景,水辺・海,,海,ocean,general&#10;&#10;簡易形式:&#10;ローアングル, 下から -> from below&#10;通常立ち絵 -> standing, solo"></textarea>
-              <div class="button-row">
-                <button class="primary" id="appendDictionary" type="button">辞書に追加</button>
-                <button id="replaceDictionary" type="button">辞書を置き換え</button>
-                <button class="danger" id="resetDictionary" type="button">辞書を空にする</button>
-              </div>
-              <div class="split-row">
-                <input id="dictionaryFile" class="file-input" type="file" accept=".csv,text/csv,application/json,.json,.txt,text/plain">
-                <button id="loadDictionaryFile" type="button">ファイルから読み込み</button>
-              </div>
-              <div class="muted">CSV / JSON / 簡易形式に対応。推奨CSV形式は「ジャンル,サブジャンル1,サブジャンル2,ラベル,プロンプト,分類」。分類は general / nsfw を使用します。プロンプト列はカンマ区切りの複数タグにも対応します。読み込んだ辞書は、タグ検索・お気に入り登録・最近使ったタグ・貼り付け整理時の分類補助に使われます。</div>
-            </div>
-          </details>
-        </div>
-      </section>
-
-    </div>
+        <div id="charactersList" class="characters-list"></div>
+      </div>
+    </aside>
   </main>
 
   <footer>
