@@ -685,6 +685,7 @@
           <button class="primary" id="organizeTags" type="button">タグ整理</button>
           <button id="applyOrganized" type="button">整理結果を反映</button>
           <button id="copyOrganized" type="button">整理済みをコピー</button>
+          <button class="danger" id="resetPastePanel" type="button">この欄をリセット</button>
         </div>
         <div id="organizeSummary" class="summary-grid"></div>
       </div>
@@ -1718,6 +1719,14 @@
       toast("整理結果を反映しました");
     }
 
+    function resetPastePanel() {
+      els.pasteInput.value = "";
+      state.organized = structuredClone(defaultState.organized);
+      saveState();
+      renderOrganizeSummary();
+      toast("タグ貼り付け整理をリセットしました");
+    }
+
     function parseDictionaryText(text) {
       const raw = String(text || "").trim();
       if (!raw) return [];
@@ -2100,6 +2109,7 @@
           .join("\n");
         copyText(text, "整理済みタグをコピーしました");
       });
+      els.resetPastePanel.addEventListener("click", resetPastePanel);
 
       els.copyFinal.addEventListener("click", () => copyText(els.finalPrompt.value, "最終プロンプトをコピーしました"));
       els.floatingCopyFinal.addEventListener("click", () => copyText(els.finalPrompt.value, "最終プロンプトをコピーしました"));
@@ -2153,7 +2163,7 @@
         "dictionaryResults", "dictionaryInput", "dictionaryFile", "appendDictionary", "replaceDictionary", "loadDictionaryFile", "resetDictionary",
         "finalPrompt", "negativePrompt", "charactersList",
         "characterName", "characterMemo", "saveCharacter", "overwriteCharacter",
-        "organizeTags", "applyOrganized", "copyOrganized", "pasteInput", "organizeSummary",
+        "organizeTags", "applyOrganized", "copyOrganized", "resetPastePanel", "pasteInput", "organizeSummary",
         "copyFinal", "copyNegative", "dedupeAll", "exportData",
         "importFile", "importData", "resetPromptSections", "addQuickTag", "removeQuickTag"
       ].forEach((id) => {
