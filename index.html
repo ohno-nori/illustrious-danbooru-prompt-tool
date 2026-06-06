@@ -251,6 +251,10 @@
       padding: 14px;
     }
 
+    [hidden] {
+      display: none !important;
+    }
+
     .stack {
       display: grid;
       gap: 12px;
@@ -677,7 +681,7 @@
     <section class="tool-panel" id="pastePanel">
       <div class="panel-head">
         <h2>タグ貼り付け整理</h2>
-        <button type="button" class="panel-toggle" data-toggle-panel="pastePanel" aria-expanded="true">折りたたむ</button>
+        <button id="togglePastePanel" type="button" class="panel-toggle" data-toggle-panel="pastePanel" aria-expanded="true">折りたたむ</button>
       </div>
       <div class="panel-body stack">
         <textarea id="pasteInput" style="min-height: 154px;" placeholder="過去プロンプトやタグ列を貼り付け"></textarea>
@@ -694,7 +698,7 @@
     <aside id="savedTagsPanel">
       <div class="panel-head">
         <h2>お気に入りタグ</h2>
-        <button type="button" class="panel-toggle" data-toggle-panel="savedTagsPanel" aria-expanded="true">折りたたむ</button>
+        <button id="toggleSavedTagsPanel" type="button" class="panel-toggle" data-toggle-panel="savedTagsPanel" aria-expanded="true">折りたたむ</button>
       </div>
       <div class="panel-body">
         <input class="quick-search" id="tagSearch" type="search" placeholder="お気に入り・最近使ったタグを検索">
@@ -722,7 +726,7 @@
           <h2>検索式タグ辞書</h2>
           <div class="muted" id="dictionaryStats"></div>
         </div>
-        <button type="button" class="panel-toggle" data-toggle-panel="dictionaryPanel" aria-expanded="true">折りたたむ</button>
+        <button id="toggleDictionaryPanel" type="button" class="panel-toggle" data-toggle-panel="dictionaryPanel" aria-expanded="true">折りたたむ</button>
       </div>
       <div class="panel-body stack">
         <div class="dictionary-toolbar">
@@ -1944,6 +1948,14 @@
       setPanelCollapsed("dictionaryPanel", isMobile);
     }
 
+    function togglePanel(panelId) {
+      const panel = document.getElementById(panelId);
+      if (!panel) return;
+      const body = panel.querySelector(".panel-body");
+      if (!body) return;
+      setPanelCollapsed(panelId, !body.hidden);
+    }
+
     function bindEvents() {
       els.sections.addEventListener("input", (event) => {
         const key = event.target.dataset.sectionInput;
@@ -2139,15 +2151,9 @@
           els.menuToggle.setAttribute("aria-expanded", "false");
         }
       });
-      document.addEventListener("click", (event) => {
-        const button = event.target.closest("[data-toggle-panel]");
-        if (!button) return;
-        const panelId = button.dataset.togglePanel;
-        const panel = document.getElementById(panelId);
-        const body = panel?.querySelector(".panel-body");
-        if (!body) return;
-        setPanelCollapsed(panelId, !body.hidden);
-      });
+      els.togglePastePanel.addEventListener("click", () => togglePanel("pastePanel"));
+      els.toggleSavedTagsPanel.addEventListener("click", () => togglePanel("savedTagsPanel"));
+      els.toggleDictionaryPanel.addEventListener("click", () => togglePanel("dictionaryPanel"));
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".menu-wrap")) {
           els.jumpMenu.classList.remove("show");
@@ -2159,6 +2165,7 @@
     function boot() {
       [
         "toast", "floatingCopyFinal", "menuToggle", "jumpMenu", "sections", "quickTags", "favoriteTags", "recentTags", "quickCategory", "quickNewTag", "tagSearch",
+        "togglePastePanel", "toggleSavedTagsPanel", "toggleDictionaryPanel",
         "dictionaryStats", "dictionarySearch", "dictionarySafetyFilter", "dictionaryGenreFilter", "dictionarySubgenre1Filter", "dictionarySubgenre2Filter",
         "dictionaryResults", "dictionaryInput", "dictionaryFile", "appendDictionary", "replaceDictionary", "loadDictionaryFile", "resetDictionary",
         "finalPrompt", "negativePrompt", "charactersList",
