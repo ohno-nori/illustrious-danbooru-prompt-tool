@@ -240,6 +240,13 @@
       font-size: 15px;
     }
 
+    .panel-toggle {
+      min-height: 28px;
+      padding: 4px 8px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
     .panel-body {
       padding: 14px;
     }
@@ -601,6 +608,14 @@
         grid-template-columns: 1fr;
       }
 
+      .panel-head {
+        gap: 8px;
+      }
+
+      .panel-toggle {
+        min-width: 64px;
+      }
+
       .layout-column,
       .right-column {
         grid-template-columns: 1fr;
@@ -636,7 +651,7 @@
   <header>
     <div>
       <h1>Illustrious Danbooru Prompt Tool</h1>
-      <div class="muted">過去プロンプトの整理、辞書検索、保存タグをブラウザ内で管理</div>
+      <div class="muted">過去プロンプトの整理、辞書検索、お気に入りタグをブラウザ内で管理</div>
       <div class="muted">使い方：過去プロンプトを貼り付け → タグ整理 → 整理結果を反映 → 編集して最終プロンプトをコピー</div>
     </div>
   </header>
@@ -648,7 +663,7 @@
     </div>
     <nav class="jump-menu" id="jumpMenu" aria-label="画面内メニュー">
       <a href="#pastePanel">タグ貼り付け整理</a>
-      <a href="#savedTagsPanel">保存タグ</a>
+      <a href="#savedTagsPanel">お気に入りタグ</a>
       <a href="#dictionaryPanel">タグ辞書</a>
       <a href="#promptPanel">プロンプト編集</a>
       <a href="#outputPanel">最終出力</a>
@@ -662,6 +677,7 @@
     <section class="tool-panel" id="pastePanel">
       <div class="panel-head">
         <h2>タグ貼り付け整理</h2>
+        <button type="button" class="panel-toggle" data-toggle-panel="pastePanel" aria-expanded="true">折りたたむ</button>
       </div>
       <div class="panel-body stack">
         <textarea id="pasteInput" style="min-height: 154px;" placeholder="過去プロンプトやタグ列を貼り付け"></textarea>
@@ -676,13 +692,14 @@
 
     <aside id="savedTagsPanel">
       <div class="panel-head">
-        <h2>保存タグ</h2>
+        <h2>お気に入りタグ</h2>
+        <button type="button" class="panel-toggle" data-toggle-panel="savedTagsPanel" aria-expanded="true">折りたたむ</button>
       </div>
       <div class="panel-body">
         <input class="quick-search" id="tagSearch" type="search" placeholder="お気に入り・最近使ったタグを検索">
         <div id="quickTags" class="stack" hidden></div>
         <div class="compact-block">
-          <h3>お気に入りタグ</h3>
+          <h3>お気に入り</h3>
           <div id="favoriteTags" class="tag-grid"></div>
         </div>
         <div class="compact-block">
@@ -700,8 +717,11 @@
 
     <section class="tool-panel" id="dictionaryPanel">
       <div class="panel-head">
-        <h2>検索式タグ辞書</h2>
-        <div class="muted" id="dictionaryStats"></div>
+        <div>
+          <h2>検索式タグ辞書</h2>
+          <div class="muted" id="dictionaryStats"></div>
+        </div>
+        <button type="button" class="panel-toggle" data-toggle-panel="dictionaryPanel" aria-expanded="true">折りたたむ</button>
       </div>
       <div class="panel-body stack">
         <div class="dictionary-toolbar">
@@ -1897,6 +1917,24 @@
       updateFinalOutput();
     }
 
+    function setPanelCollapsed(panelId, collapsed) {
+      const panel = document.getElementById(panelId);
+      if (!panel) return;
+      const body = panel.querySelector(".panel-body");
+      const button = panel.querySelector(`[data-toggle-panel="${panelId}"]`);
+      if (!body || !button) return;
+      body.hidden = collapsed;
+      button.textContent = collapsed ? "開く" : "折りたたむ";
+      button.setAttribute("aria-expanded", String(!collapsed));
+    }
+
+    function initializePanelCollapse() {
+      const isMobile = window.matchMedia("(max-width: 760px)").matches;
+      setPanelCollapsed("pastePanel", false);
+      setPanelCollapsed("savedTagsPanel", isMobile);
+      setPanelCollapsed("dictionaryPanel", isMobile);
+    }
+
     function bindEvents() {
       els.sections.addEventListener("input", (event) => {
         const key = event.target.dataset.sectionInput;
@@ -2092,6 +2130,15 @@
         }
       });
       document.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-toggle-panel]");
+        if (!button) return;
+        const panelId = button.dataset.togglePanel;
+        const panel = document.getElementById(panelId);
+        const body = panel?.querySelector(".panel-body");
+        if (!body) return;
+        setPanelCollapsed(panelId, !body.hidden);
+      });
+      document.addEventListener("click", (event) => {
         if (!event.target.closest(".menu-wrap")) {
           els.jumpMenu.classList.remove("show");
           els.menuToggle.setAttribute("aria-expanded", "false");
@@ -2114,6 +2161,7 @@
       });
       els.dictionarySafetyFilter.value = "general";
       renderAll();
+      initializePanelCollapse();
       bindEvents();
       registerServiceWorker();
     }
