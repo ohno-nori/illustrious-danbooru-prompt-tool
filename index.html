@@ -370,6 +370,42 @@
       min-height: 84px;
     }
 
+    .section-memo-panel {
+      display: grid;
+      gap: 10px;
+      padding: 10px;
+      border-top: 1px solid rgba(55, 65, 81, .62);
+      background: rgba(15, 23, 42, .38);
+    }
+
+    .section-memo-save-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+    }
+
+    .section-memo-list {
+      display: grid;
+      gap: 8px;
+      max-height: 260px;
+      overflow: auto;
+    }
+
+    .section-memo-row {
+      display: grid;
+      gap: 6px;
+      padding: 8px;
+      border: 1px solid rgba(55, 65, 81, .74);
+      border-radius: 7px;
+      background: rgba(15, 23, 42, .48);
+    }
+
+    .section-memo-preview {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .option-line {
       display: flex;
       align-items: center;
@@ -636,6 +672,10 @@
       .section-actions button {
         flex: 1 1 auto;
       }
+
+      .section-memo-save-row {
+        grid-template-columns: 1fr;
+      }
     }
 
     footer {
@@ -893,6 +933,7 @@
     const defaultState = {
       sections: Object.fromEntries(sectionDefs.map(([key]) => [key, ""])),
       promptMemos: [],
+      sectionMemos: Object.fromEntries(sectionDefs.map(([key]) => [key, []])),
       quickTags: defaultQuickTags,
       tagDictionary: defaultTagDictionary.map(normalizeDictionaryEntry),
       favoriteTagIds: [],
@@ -921,6 +962,7 @@
           ? parsed.recentTags.slice(0, 40).map((item) => ({ ...item, section: resolveSectionKey(item.section) }))
           : [];
         merged.promptMemos = Array.isArray(parsed.promptMemos) ? parsed.promptMemos.map(migratePromptMemo).filter(Boolean) : [];
+        merged.sectionMemos = normalizeSectionMemos(parsed.sectionMemos);
         merged.selectedPromptMemoId = parsed.selectedPromptMemoId || "";
         merged.organized = migrateOrganizedSections(parsed.organized || {});
         return merged;
@@ -1036,6 +1078,25 @@
         migrated[nextKey] = uniqueTags([...(migrated[nextKey] || []), ...tags]);
       });
       return migrated;
+    }
+
+    function normalizeSectionMemos(sectionMemos = {}) {
+      return Object.fromEntries(
+        sectionDefs.map(([key]) => [
+          key,
+          Array.isArray(sectionMemos?.[key])
+            ? sectionMemos[key]
+              .filter((memo) => memo && typeof memo === "object")
+              .map((memo) => ({
+                id: String(memo.id || `section-memo-${Date.now()}-${Math.random().toString(16).slice(2)}`),
+                name: normalizeTag(memo.name || "無名メモ"),
+                value: normalizeTag(memo.value || ""),
+                createdAt: Number(memo.createdAt) || Date.now()
+              }))
+              .filter((memo) => memo.value)
+            : []
+        ])
+      );
     }
 
     function migratePromptMemo(promptMemo) {
@@ -1368,18 +1429,158 @@
         card.className = "section-card";
         card.innerHTML = `
           <div class="section-header">
-            <div class="section-title">${label}</div>
+            <div class="section-title">${escapeHtml(label)}</div>
             <div class="section-actions">
               <button type="button" data-copy-section="${key}">コピー</button>
-              <button type="button" data-dedupe-section="${key}">重複削除</button>
+              <button type="button" data-paste-section="${key}">貼り付け</button>
+              <button type="button" data-toggle-section-memo="${key}">メモ</button>
               <button type="button" data-clear-section="${key}">クリア</button>
             </div>
           </div>
-          <textarea data-section-input="${key}" placeholder="${label} のタグをカンマ区切りで入力"></textarea>
+          <textarea data-section-input="${key}" placeholder="${escapeHtml(label)} のタグをカンマ区切りで入力"></textarea>
+          <div class="section-memo-panel" data-section-memo-panel="${key}" hidden>
+            <div class="section-memo-save-row">
+              <input type="text" data-section-memo-name="${key}" placeholder="${escapeHtml(label)}メモ名">
+              <button type="button" data-save-section-memo="${key}">現在内容を保存</button>
+            </div>
+            <div class="section-memo-list" data-section-memo-list="${key}"></div>
+          </div>
         `;
         els.sections.appendChild(card);
         renderSectionValue(key);
+        renderSectionMemoList(key);
       });
+    }
+
+    function ensureSectionMemos() {
+      state.sectionMemos = normalizeSectionMemos(state.sectionMemos);
+    }
+
+    function renderSectionMemoList(sectionKey) {
+      ensureSectionMemos();
+      const list = document.querySelector(`[data-section-memo-list="${sectionKey}"]`);
+      if (!list) return;
+      const memos = state.sectionMemos[sectionKey] || [];
+      list.innerHTML = "";
+      if (!memos.length) {
+        const empty = document.createElement("div");
+        empty.className = "muted";
+        empty.textContent = "保存済みメモはありません";
+        list.appendChild(empty);
+        return;
+      }
+      memos.forEach((memo) => {
+        const row = document.createElement("div");
+        row.className = "section-memo-row";
+        row.innerHTML = `
+          <strong>${escapeHtml(memo.name)}</strong>
+          <div class="muted section-memo-preview" title="${escapeHtml(memo.value)}">${escapeHtml(memo.value)}</div>
+          <div class="button-row">
+            <button type="button" data-replace-section-memo="${escapeHtml(memo.id)}" data-section-key="${sectionKey}">置き換え</button>
+            <button type="button" data-append-section-memo="${escapeHtml(memo.id)}" data-section-key="${sectionKey}">追加</button>
+            <button class="danger" type="button" data-delete-section-memo="${escapeHtml(memo.id)}" data-section-key="${sectionKey}">削除</button>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    function findSectionMemo(sectionKey, memoId) {
+      ensureSectionMemos();
+      return (state.sectionMemos[sectionKey] || []).find((memo) => memo.id === memoId);
+    }
+
+    function toggleSectionMemoPanel(sectionKey) {
+      const panel = document.querySelector(`[data-section-memo-panel="${sectionKey}"]`);
+      if (!panel) return;
+      panel.hidden = !panel.hidden;
+      if (!panel.hidden) renderSectionMemoList(sectionKey);
+    }
+
+    async function pasteToSection(sectionKey) {
+      const resolvedSection = resolveSectionKey(sectionKey);
+      try {
+        const text = await navigator.clipboard.readText();
+        const pastedTags = splitTags(text);
+        if (!pastedTags.length) {
+          toast("貼り付けるタグがありません", "danger");
+          return;
+        }
+        state.sections[resolvedSection] = tagsToText([
+          ...splitTags(state.sections[resolvedSection]),
+          ...pastedTags
+        ]);
+        saveState();
+        renderSectionValue(resolvedSection);
+        renderQuickTags();
+        updateFinalOutput();
+        toast(`${sectionLabel(resolvedSection)}に貼り付けました`);
+      } catch {
+        toast("クリップボードを読み取れませんでした", "danger");
+      }
+    }
+
+    function saveSectionMemo(sectionKey) {
+      const resolvedSection = resolveSectionKey(sectionKey);
+      ensureSectionMemos();
+      const input = document.querySelector(`[data-section-memo-name="${resolvedSection}"]`);
+      const name = input?.value.trim() || "";
+      const value = state.sections[resolvedSection]?.trim() || "";
+      if (!name) {
+        toast("メモ名を入力してください", "danger");
+        return;
+      }
+      if (!value) {
+        toast("保存する内容がありません", "danger");
+        return;
+      }
+      state.sectionMemos[resolvedSection].push({
+        id: `section-memo-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name,
+        value,
+        createdAt: Date.now()
+      });
+      saveState();
+      if (input) input.value = "";
+      renderSectionMemoList(resolvedSection);
+      toast(`${sectionLabel(resolvedSection)}メモを保存しました`);
+    }
+
+    function replaceSectionWithMemo(sectionKey, memoId) {
+      const resolvedSection = resolveSectionKey(sectionKey);
+      const memo = findSectionMemo(resolvedSection, memoId);
+      if (!memo) return;
+      state.sections[resolvedSection] = memo.value;
+      saveState();
+      renderSectionValue(resolvedSection);
+      renderQuickTags();
+      updateFinalOutput();
+      toast(`${sectionLabel(resolvedSection)}をメモ内容で置き換えました`);
+    }
+
+    function appendSectionMemo(sectionKey, memoId) {
+      const resolvedSection = resolveSectionKey(sectionKey);
+      const memo = findSectionMemo(resolvedSection, memoId);
+      if (!memo) return;
+      state.sections[resolvedSection] = tagsToText([
+        ...splitTags(state.sections[resolvedSection]),
+        ...splitTags(memo.value)
+      ]);
+      saveState();
+      renderSectionValue(resolvedSection);
+      renderQuickTags();
+      updateFinalOutput();
+      toast(`${sectionLabel(resolvedSection)}メモを追加しました`);
+    }
+
+    function deleteSectionMemo(sectionKey, memoId) {
+      const resolvedSection = resolveSectionKey(sectionKey);
+      const memo = findSectionMemo(resolvedSection, memoId);
+      if (!memo || !confirm(`「${memo.name}」を削除しますか？`)) return;
+      state.sectionMemos[resolvedSection] = state.sectionMemos[resolvedSection].filter((item) => item.id !== memoId);
+      saveState();
+      renderSectionMemoList(resolvedSection);
+      toast(`${sectionLabel(resolvedSection)}メモを削除しました`);
     }
 
     function renderQuickTags() {
@@ -1866,6 +2067,7 @@
               ? imported.recentTags.slice(0, 40).map((item) => ({ ...item, section: resolveSectionKey(item.section) }))
               : [],
             promptMemos: Array.isArray(imported.promptMemos) ? imported.promptMemos.map(migratePromptMemo).filter(Boolean) : [],
+            sectionMemos: normalizeSectionMemos(imported.sectionMemos),
             selectedPromptMemoId: imported.selectedPromptMemoId || "",
             organized: migrateOrganizedSections(imported.organized || {})
           };
@@ -1905,15 +2107,6 @@
       updateFinalOutput();
       renderPromptMemos();
       toast("プロンプト編集欄をクリアしました");
-    }
-
-    function dedupeSection(sectionKey) {
-      state.sections[sectionKey] = tagsToText(splitTags(state.sections[sectionKey]));
-      saveState();
-      renderSectionValue(sectionKey);
-      renderQuickTags();
-      updateFinalOutput();
-      toast("重複を削除しました");
     }
 
     function renderAll() {
@@ -1967,17 +2160,49 @@
 
       els.sections.addEventListener("click", (event) => {
         const copyKey = event.target.dataset.copySection;
+        const pasteKey = event.target.dataset.pasteSection;
+        const toggleMemoKey = event.target.dataset.toggleSectionMemo;
         const clearKey = event.target.dataset.clearSection;
-        const dedupeKey = event.target.dataset.dedupeSection;
-        if (copyKey) copyText(state.sections[copyKey], `${sectionLabel(copyKey)}をコピーしました`);
+        const saveMemoKey = event.target.dataset.saveSectionMemo;
+        const replaceMemoId = event.target.dataset.replaceSectionMemo;
+        const appendMemoId = event.target.dataset.appendSectionMemo;
+        const deleteMemoId = event.target.dataset.deleteSectionMemo;
+        const memoSectionKey = event.target.dataset.sectionKey;
+        if (copyKey) {
+          copyText(state.sections[copyKey], `${sectionLabel(copyKey)}をコピーしました`);
+          return;
+        }
+        if (pasteKey) {
+          pasteToSection(pasteKey);
+          return;
+        }
+        if (toggleMemoKey) {
+          toggleSectionMemoPanel(toggleMemoKey);
+          return;
+        }
         if (clearKey) {
           state.sections[clearKey] = "";
           saveState();
           renderSectionValue(clearKey);
           renderQuickTags();
           updateFinalOutput();
+          return;
         }
-        if (dedupeKey) dedupeSection(dedupeKey);
+        if (saveMemoKey) {
+          saveSectionMemo(saveMemoKey);
+          return;
+        }
+        if (replaceMemoId && memoSectionKey) {
+          replaceSectionWithMemo(memoSectionKey, replaceMemoId);
+          return;
+        }
+        if (appendMemoId && memoSectionKey) {
+          appendSectionMemo(memoSectionKey, appendMemoId);
+          return;
+        }
+        if (deleteMemoId && memoSectionKey) {
+          deleteSectionMemo(memoSectionKey, deleteMemoId);
+        }
       });
 
       els.tagSearch.addEventListener("input", () => {
