@@ -400,12 +400,6 @@
       background: rgba(15, 23, 42, .48);
     }
 
-    .section-memo-preview {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
     .option-line {
       display: flex;
       align-items: center;
@@ -727,8 +721,7 @@
         <div class="button-row">
           <button class="primary" id="organizeTags" type="button">タグ整理</button>
           <button id="applyOrganized" type="button">整理結果を反映</button>
-          <button id="copyOrganized" type="button">整理済みをコピー</button>
-          <button class="danger" id="resetPastePanel" type="button">この欄をリセット</button>
+          <button class="danger" id="resetPastePanel" type="button">リセット</button>
         </div>
         <div id="organizeSummary" class="summary-grid"></div>
       </div>
@@ -741,7 +734,6 @@
       </div>
       <div class="panel-body">
         <input class="quick-search" id="tagSearch" type="search" placeholder="お気に入り・最近使ったタグを検索">
-        <div id="quickTags" class="stack" hidden></div>
         <div class="compact-block">
           <h3>お気に入り</h3>
           <div id="favoriteTags" class="tag-grid"></div>
@@ -749,12 +741,6 @@
         <div class="compact-block">
           <h3>最近使ったタグ</h3>
           <div id="recentTags" class="tag-grid"></div>
-        </div>
-        <div class="stack" style="margin-top: 12px;">
-          <select id="quickCategory" hidden></select>
-          <input id="quickNewTag" type="text" hidden>
-          <button id="addQuickTag" type="button" hidden>候補タグを追加</button>
-          <button id="removeQuickTag" type="button" hidden>候補タグを削除</button>
         </div>
       </div>
     </aside>
@@ -830,7 +816,6 @@
         <div class="button-row">
           <button class="primary" id="copyFinal" type="button">最終プロンプトをコピー</button>
           <button id="copyNegative" type="button">ネガティブをコピー</button>
-          <button id="dedupeAll" type="button">全体の重複削除</button>
         </div>
         <textarea id="negativePrompt" class="output-box" readonly></textarea>
       </div>
@@ -893,8 +878,6 @@
       "style", "compositionAction", "subject", "appearance", "outfit", "backgroundLighting", "other"
     ];
 
-    const defaultQuickTags = {};
-
     const classifyRules = {
       style: ["anime style", "soft shading", "cel shading", "flat color", "illustration", "manga style", "lineart", "best quality", "masterpiece"],
       compositionAction: ["portrait", "close-up", "upper body", "cowboy shot", "full body", "wide shot", "dynamic pose", "feet out of frame", "from side", "from front", "from behind", "from below", "from above", "view from above", "dutch angle", "side view", "profile", "straight-on", "sideways", "rotated", "upside-down", "looking at viewer", "looking away", "looking back", "looking down", "looking up", "looking at another", "looking over eyewear", "expressionless", "smile", "seductive smile", "evil smile", ":d", "angry", "crying", "surprised", "sleepy", "nervous smile", "standing", "sitting", "walking", "reaching hand", "hand on hip", "crossed arms", "holding object", "skirt hold down", "sparkle", "motion blur", "speed lines", "chromatic aberration", "halftone", "film grain"],
@@ -934,7 +917,6 @@
       sections: Object.fromEntries(sectionDefs.map(([key]) => [key, ""])),
       promptMemos: [],
       sectionMemos: Object.fromEntries(sectionDefs.map(([key]) => [key, []])),
-      quickTags: defaultQuickTags,
       tagDictionary: defaultTagDictionary.map(normalizeDictionaryEntry),
       favoriteTagIds: [],
       recentTags: [],
@@ -953,7 +935,6 @@
         const parsed = JSON.parse(raw);
         const merged = structuredClone(defaultState);
         merged.sections = migrateSections(parsed.sections || {});
-        merged.quickTags = structuredClone(defaultQuickTags);
         merged.tagDictionary = Array.isArray(parsed.tagDictionary)
           ? parsed.tagDictionary.map(normalizeDictionaryEntry).filter(Boolean)
           : structuredClone(defaultState.tagDictionary);
@@ -1013,34 +994,6 @@
         if (!key || seen.has(key)) return;
         seen.add(key);
         clean.push(normalizeTag(tag));
-      });
-      return clean;
-    }
-
-    function normalizeQuickTag(item) {
-      if (typeof item === "string") {
-        const tag = normalizeTag(item);
-        return tag ? { label: tag, tag } : null;
-      }
-      if (!item) return null;
-      const tag = normalizeTag(item.tag || item.value || "");
-      if (!tag) return null;
-      return {
-        label: normalizeTag(item.label || item.name || tag),
-        tag
-      };
-    }
-
-    function uniqueQuickTags(items) {
-      const seen = new Set();
-      const clean = [];
-      (items || []).forEach((item) => {
-        const normalized = normalizeQuickTag(item);
-        if (!normalized) return;
-        const key = normalized.tag.toLowerCase();
-        if (seen.has(key)) return;
-        seen.add(key);
-        clean.push(normalized);
       });
       return clean;
     }
@@ -1364,7 +1317,6 @@
       tags.forEach((tag) => rememberRecentTag(resolvedSection, tag, meta));
       saveState();
       renderSectionValue(resolvedSection);
-      renderQuickTags();
       renderRecentTags();
       updateFinalOutput();
     }
@@ -1473,11 +1425,9 @@
         const row = document.createElement("div");
         row.className = "section-memo-row";
         row.innerHTML = `
-          <strong>${escapeHtml(memo.name)}</strong>
-          <div class="muted section-memo-preview" title="${escapeHtml(memo.value)}">${escapeHtml(memo.value)}</div>
+          <strong title="${escapeHtml(memo.value)}">${escapeHtml(memo.name)}</strong>
           <div class="button-row">
-            <button type="button" data-replace-section-memo="${escapeHtml(memo.id)}" data-section-key="${sectionKey}">置き換え</button>
-            <button type="button" data-append-section-memo="${escapeHtml(memo.id)}" data-section-key="${sectionKey}">追加</button>
+            <button type="button" data-apply-section-memo="${escapeHtml(memo.id)}" data-section-key="${sectionKey}">反映</button>
             <button class="danger" type="button" data-delete-section-memo="${escapeHtml(memo.id)}" data-section-key="${sectionKey}">削除</button>
           </div>
         `;
@@ -1512,7 +1462,6 @@
         ]);
         saveState();
         renderSectionValue(resolvedSection);
-        renderQuickTags();
         updateFinalOutput();
         toast(`${sectionLabel(resolvedSection)}に貼り付けました`);
       } catch {
@@ -1546,19 +1495,7 @@
       toast(`${sectionLabel(resolvedSection)}メモを保存しました`);
     }
 
-    function replaceSectionWithMemo(sectionKey, memoId) {
-      const resolvedSection = resolveSectionKey(sectionKey);
-      const memo = findSectionMemo(resolvedSection, memoId);
-      if (!memo) return;
-      state.sections[resolvedSection] = memo.value;
-      saveState();
-      renderSectionValue(resolvedSection);
-      renderQuickTags();
-      updateFinalOutput();
-      toast(`${sectionLabel(resolvedSection)}をメモ内容で置き換えました`);
-    }
-
-    function appendSectionMemo(sectionKey, memoId) {
+    function applySectionMemo(sectionKey, memoId) {
       const resolvedSection = resolveSectionKey(sectionKey);
       const memo = findSectionMemo(resolvedSection, memoId);
       if (!memo) return;
@@ -1568,9 +1505,8 @@
       ]);
       saveState();
       renderSectionValue(resolvedSection);
-      renderQuickTags();
       updateFinalOutput();
-      toast(`${sectionLabel(resolvedSection)}メモを追加しました`);
+      toast(`${sectionLabel(resolvedSection)}メモを反映しました`);
     }
 
     function deleteSectionMemo(sectionKey, memoId) {
@@ -1581,42 +1517,6 @@
       saveState();
       renderSectionMemoList(resolvedSection);
       toast(`${sectionLabel(resolvedSection)}メモを削除しました`);
-    }
-
-    function renderQuickTags() {
-      const query = els.tagSearch.value.trim().toLowerCase();
-      els.quickTags.innerHTML = "";
-      Object.entries(state.quickTags).forEach(([section, tags]) => {
-        const filtered = uniqueQuickTags(tags).filter((item) => {
-          const haystack = `${item.label} ${item.tag}`.toLowerCase();
-          return !query || haystack.includes(query);
-        });
-        if (!filtered.length) return;
-
-        const details = document.createElement("details");
-        details.open = section === "compositionAction" || Boolean(query);
-        const summary = document.createElement("summary");
-        summary.textContent = sectionLabel(section);
-        details.appendChild(summary);
-
-        const grid = document.createElement("div");
-        grid.className = "tag-grid";
-        const activeTags = new Set(splitTags(state.sections[section]).map((tag) => tag.toLowerCase()));
-        filtered.forEach((item) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = `tag-btn${activeTags.has(item.tag.toLowerCase()) ? " active" : ""}`;
-          btn.textContent = item.label;
-          btn.title = `${item.tag} を ${sectionLabel(section)} に追加`;
-          btn.addEventListener("click", () => addTagsToSection(section, splitTags(item.tag), {
-            japanese: item.label,
-            category: sectionLabel(section)
-          }));
-          grid.appendChild(btn);
-        });
-        details.appendChild(grid);
-        els.quickTags.appendChild(details);
-      });
     }
 
     function renderFavoriteTags() {
@@ -1804,16 +1704,6 @@
       renderDictionaryResults();
     }
 
-    function renderQuickCategoryOptions() {
-      els.quickCategory.innerHTML = "";
-      Object.keys(state.quickTags).forEach((key) => {
-        const option = document.createElement("option");
-        option.value = key;
-        option.textContent = sectionLabel(key);
-        els.quickCategory.appendChild(option);
-      });
-    }
-
     function renderPromptMemos() {
       els.charactersList.innerHTML = "";
       if (!state.promptMemos.length) {
@@ -1869,7 +1759,6 @@
       saveState();
       renderSections();
       renderPromptMemos();
-      renderQuickTags();
       renderRecentTags();
       updateFinalOutput();
       toast("プロンプトメモを呼び出しました");
@@ -1918,7 +1807,6 @@
         renderSectionValue(key);
       });
       saveState();
-      renderQuickTags();
       updateFinalOutput();
       toast("整理結果を反映しました");
     }
@@ -2056,9 +1944,7 @@
           const imported = JSON.parse(String(reader.result));
           state = {
             ...structuredClone(defaultState),
-            ...imported,
             sections: migrateSections(imported.sections || {}),
-            quickTags: structuredClone(defaultQuickTags),
             tagDictionary: Array.isArray(imported.tagDictionary)
               ? imported.tagDictionary.map(normalizeDictionaryEntry).filter(Boolean)
               : structuredClone(defaultState.tagDictionary),
@@ -2081,18 +1967,6 @@
       reader.readAsText(file);
     }
 
-    function resetBuilder() {
-      if (!confirm("現在のプロンプト入力欄を空にしますか？ 保存済みプロンプトメモや候補タグは残ります。")) return;
-      state.sections = structuredClone(defaultState.sections);
-      state.organized = structuredClone(defaultState.organized);
-      state.selectedPromptMemoId = "";
-      els.characterName.value = "";
-      els.characterMemo.value = "";
-      saveState();
-      renderAll();
-      toast("ビルダーを初期化しました");
-    }
-
     function resetPromptSections() {
       if (!confirm("プロンプト編集欄をすべて空にしますか？ 保存済みプロンプトメモ、辞書、お気に入り、最近使ったタグは残ります。")) return;
       state.sections = structuredClone(defaultState.sections);
@@ -2102,7 +1976,6 @@
       els.characterMemo.value = "";
       saveState();
       renderSections();
-      renderQuickTags();
       renderOrganizeSummary();
       updateFinalOutput();
       renderPromptMemos();
@@ -2111,8 +1984,6 @@
 
     function renderAll() {
       renderSections();
-      renderQuickCategoryOptions();
-      renderQuickTags();
       renderFavoriteTags();
       renderRecentTags();
       renderDictionaryCategoryOptions();
@@ -2135,7 +2006,7 @@
 
     function initializePanelCollapse() {
       const isMobile = window.matchMedia("(max-width: 760px)").matches;
-      setPanelCollapsed("pastePanel", false);
+      setPanelCollapsed("pastePanel", isMobile);
       setPanelCollapsed("savedTagsPanel", isMobile);
       setPanelCollapsed("dictionaryPanel", isMobile);
     }
@@ -2154,7 +2025,6 @@
         if (!key) return;
         state.sections[key] = event.target.value;
         saveState();
-        renderQuickTags();
         updateFinalOutput();
       });
 
@@ -2164,8 +2034,7 @@
         const toggleMemoKey = event.target.dataset.toggleSectionMemo;
         const clearKey = event.target.dataset.clearSection;
         const saveMemoKey = event.target.dataset.saveSectionMemo;
-        const replaceMemoId = event.target.dataset.replaceSectionMemo;
-        const appendMemoId = event.target.dataset.appendSectionMemo;
+        const applyMemoId = event.target.dataset.applySectionMemo;
         const deleteMemoId = event.target.dataset.deleteSectionMemo;
         const memoSectionKey = event.target.dataset.sectionKey;
         if (copyKey) {
@@ -2184,7 +2053,6 @@
           state.sections[clearKey] = "";
           saveState();
           renderSectionValue(clearKey);
-          renderQuickTags();
           updateFinalOutput();
           return;
         }
@@ -2192,12 +2060,8 @@
           saveSectionMemo(saveMemoKey);
           return;
         }
-        if (replaceMemoId && memoSectionKey) {
-          replaceSectionWithMemo(memoSectionKey, replaceMemoId);
-          return;
-        }
-        if (appendMemoId && memoSectionKey) {
-          appendSectionMemo(memoSectionKey, appendMemoId);
+        if (applyMemoId && memoSectionKey) {
+          applySectionMemo(memoSectionKey, applyMemoId);
           return;
         }
         if (deleteMemoId && memoSectionKey) {
@@ -2239,42 +2103,6 @@
       els.replaceDictionary.addEventListener("click", () => loadDictionaryFromInput("replace"));
       els.loadDictionaryFile.addEventListener("click", loadDictionaryFromFile);
       els.resetDictionary.addEventListener("click", resetDictionary);
-
-      els.addQuickTag.addEventListener("click", () => {
-        const section = els.quickCategory.value;
-        const tag = normalizeTag(els.quickNewTag.value);
-        if (!tag) {
-          toast("追加するタグを入力してください", "danger");
-          return;
-        }
-        state.quickTags[section] = uniqueQuickTags([...(state.quickTags[section] || []), tag]);
-        els.quickNewTag.value = "";
-        saveState();
-        renderQuickTags();
-        toast("候補タグを追加しました");
-      });
-
-      els.removeQuickTag.addEventListener("click", () => {
-        const section = els.quickCategory.value;
-        const tag = normalizeTag(els.quickNewTag.value);
-        if (!tag) {
-          toast("削除するタグを入力してください", "danger");
-          return;
-        }
-        const before = state.quickTags[section] || [];
-        state.quickTags[section] = before.filter((item) => {
-          const normalized = normalizeQuickTag(item);
-          return normalized && normalized.tag.toLowerCase() !== tag.toLowerCase() && normalized.label.toLowerCase() !== tag.toLowerCase();
-        });
-        if (before.length === state.quickTags[section].length) {
-          toast("候補タグが見つかりません", "danger");
-          return;
-        }
-        els.quickNewTag.value = "";
-        saveState();
-        renderQuickTags();
-        toast("候補タグを削除しました");
-      });
 
       els.saveCharacter.addEventListener("click", () => {
         const promptMemo = getPromptMemoFormData();
@@ -2338,29 +2166,11 @@
 
       els.organizeTags.addEventListener("click", organizePastedTags);
       els.applyOrganized.addEventListener("click", applyOrganizedTags);
-      els.copyOrganized.addEventListener("click", () => {
-        const text = Object.entries(state.organized)
-          .filter(([, tags]) => tags && tags.length)
-          .map(([key, tags]) => `${sectionLabel(key)}: ${tags.join(", ")}`)
-          .join("\n");
-        copyText(text, "整理済みタグをコピーしました");
-      });
       els.resetPastePanel.addEventListener("click", resetPastePanel);
 
       els.copyFinal.addEventListener("click", () => copyText(els.finalPrompt.value, "最終プロンプトをコピーしました"));
       els.floatingCopyFinal.addEventListener("click", () => copyText(els.finalPrompt.value, "最終プロンプトをコピーしました"));
       els.copyNegative.addEventListener("click", () => copyText(els.negativePrompt.value, "ネガティブをコピーしました"));
-      els.dedupeAll.addEventListener("click", () => {
-        sectionDefs.forEach(([key]) => {
-        state.sections[key] = tagsToText(splitTags(state.sections[key]));
-          renderSectionValue(key);
-        });
-        saveState();
-        renderQuickTags();
-        renderRecentTags();
-        updateFinalOutput();
-        toast("全セクションの重複を削除しました");
-      });
       els.exportData.addEventListener("click", exportData);
       els.importData.addEventListener("click", importData);
       els.resetPromptSections.addEventListener("click", resetPromptSections);
@@ -2388,15 +2198,15 @@
 
     function boot() {
       [
-        "toast", "floatingCopyFinal", "menuToggle", "jumpMenu", "sections", "quickTags", "favoriteTags", "recentTags", "quickCategory", "quickNewTag", "tagSearch",
+        "toast", "floatingCopyFinal", "menuToggle", "jumpMenu", "sections", "favoriteTags", "recentTags", "tagSearch",
         "togglePastePanel", "toggleSavedTagsPanel", "toggleDictionaryPanel",
         "dictionaryStats", "dictionarySearch", "dictionarySafetyFilter", "dictionaryGenreFilter", "dictionarySubgenre1Filter", "dictionarySubgenre2Filter",
         "dictionaryResults", "dictionaryInput", "dictionaryFile", "appendDictionary", "replaceDictionary", "loadDictionaryFile", "resetDictionary",
         "finalPrompt", "negativePrompt", "charactersList",
         "characterName", "characterMemo", "saveCharacter", "overwriteCharacter",
-        "organizeTags", "applyOrganized", "copyOrganized", "resetPastePanel", "pasteInput", "organizeSummary",
-        "copyFinal", "copyNegative", "dedupeAll", "exportData",
-        "importFile", "importData", "resetPromptSections", "addQuickTag", "removeQuickTag"
+        "organizeTags", "applyOrganized", "resetPastePanel", "pasteInput", "organizeSummary",
+        "copyFinal", "copyNegative", "exportData",
+        "importFile", "importData", "resetPromptSections"
       ].forEach((id) => {
         els[id] = document.getElementById(id);
       });
