@@ -489,6 +489,18 @@
       padding-right: 2px;
     }
 
+    .dictionary-result-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #loadMoreDictionary {
+      min-width: 120px;
+    }
+
     .dictionary-row {
       display: grid;
       grid-template-columns: minmax(0, 1fr);
@@ -588,6 +600,11 @@
       main,
       .dictionary-toolbar,
       .split-row {
+        grid-template-columns: 1fr;
+      }
+
+      .dictionary-result-controls {
+        display: grid;
         grid-template-columns: 1fr;
       }
 
@@ -705,6 +722,10 @@
           <input id="dictionarySearch" type="search" placeholder="フリーワード検索：日本語・英語・別名・ジャンル">
         </div>
         <div id="dictionaryResults" class="dictionary-results"></div>
+        <div id="dictionaryResultControls" class="dictionary-result-controls">
+          <div id="dictionaryResultCount" class="muted"></div>
+          <button id="loadMoreDictionary" type="button" hidden>さらに表示</button>
+        </div>
         <details>
           <summary>辞書データを貼り付けて読み込み</summary>
           <div class="stack" style="padding: 0 10px 12px;">
@@ -808,6 +829,19 @@
     const outputOrder = [
       "style", "compositionAction", "subject", "appearance", "outfit", "backgroundLighting", "other"
     ];
+
+    const dictionaryGenreOrder = [
+      "スタイル",
+      "構図・動作",
+      "主体",
+      "外見",
+      "衣装",
+      "背景・ライティング",
+      "その他"
+    ];
+
+    const DICTIONARY_PAGE_SIZE = 80;
+    let dictionaryVisibleLimit = DICTIONARY_PAGE_SIZE;
 
     const classifyRules = {
       style: ["anime style", "soft shading", "cel shading", "flat color", "illustration", "manga style", "lineart", "best quality", "masterpiece"],
@@ -1080,6 +1114,36 @@
         entry.section,
         ...(entry.aliases || [])
       ].join(" ").toLowerCase();
+    }
+
+    function compareDictionaryGenres(a, b) {
+      const indexA = dictionaryGenreOrder.indexOf(a);
+      const indexB = dictionaryGenreOrder.indexOf(b);
+      const orderA = indexA >= 0 ? indexA : dictionaryGenreOrder.length;
+      const orderB = indexB >= 0 ? indexB : dictionaryGenreOrder.length;
+      return (
+        orderA - orderB ||
+        String(a || "").localeCompare(String(b || ""), "ja")
+      );
+    }
+
+    function compareDictionaryEntries(a, b) {
+      const genreIndexA = dictionaryGenreOrder.indexOf(a.genre);
+      const genreIndexB = dictionaryGenreOrder.indexOf(b.genre);
+      const genreOrderA = genreIndexA >= 0 ? genreIndexA : dictionaryGenreOrder.length;
+      const genreOrderB = genreIndexB >= 0 ? genreIndexB : dictionaryGenreOrder.length;
+      return (
+        genreOrderA - genreOrderB ||
+        String(a.genre || "").localeCompare(String(b.genre || ""), "ja") ||
+        String(a.subgenre1 || "").localeCompare(String(b.subgenre1 || ""), "ja") ||
+        String(a.subgenre2 || "").localeCompare(String(b.subgenre2 || ""), "ja") ||
+        String(a.japanese || "").localeCompare(String(b.japanese || ""), "ja") ||
+        String(a.tag || "").localeCompare(String(b.tag || ""), "en")
+      );
+    }
+
+    function resetDictionaryVisibleLimit() {
+      dictionaryVisibleLimit = DICTIONARY_PAGE_SIZE;
     }
 
     function mergeDictionaryEntries(entries) {
@@ -1441,7 +1505,7 @@
       const currentSubgenre2 = els.dictionarySubgenre2Filter.value || "all";
       const safety = els.dictionarySafetyFilter.value || "all";
       const safetyEntries = state.tagDictionary.filter((entry) => safety === "all" || entry.safety === safety);
-      const genres = uniqueTags(safetyEntries.map((entry) => entry.genre).filter(Boolean)).sort();
+      const genres = uniqueTags(safetyEntries.map((entry) => entry.genre).filter(Boolean)).sort(compareDictionaryGenres);
       fillSelectOptions(els.dictionaryGenreFilter, "全ジャンル", genres, currentGenre);
 
       const selectedGenre = els.dictionaryGenreFilter.value;
@@ -1467,7 +1531,7 @@
         .filter((entry) => subgenre1 === "all" || entry.subgenre1 === subgenre1)
         .filter((entry) => subgenre2 === "all" || entry.subgenre2 === subgenre2)
         .filter((entry) => !query || dictionarySearchText(entry).includes(query))
-        .slice(0, 80);
+        .sort(compareDictionaryEntries);
     }
 
     function renderDictionaryResults() {
@@ -1477,14 +1541,17 @@
       els.dictionaryStats.textContent = `辞書 ${total}件 / 一般 ${general}件 / NSFW ${nsfw}件`;
       els.dictionaryResults.innerHTML = "";
       const matches = getDictionaryMatches();
+      const visibleMatches = matches.slice(0, dictionaryVisibleLimit);
       if (!matches.length) {
         const empty = document.createElement("div");
         empty.className = "empty-note";
-        empty.textContent = "一致するタグがありません";
+        empty.textContent = total === 0 ? "辞書はまだ読み込まれていません" : "一致するタグがありません";
         els.dictionaryResults.appendChild(empty);
+        els.dictionaryResultCount.textContent = "";
+        els.loadMoreDictionary.hidden = true;
         return;
       }
-      matches.forEach((entry) => {
+      visibleMatches.forEach((entry) => {
         const row = document.createElement("div");
         row.className = "dictionary-row";
         const meta = [entry.genre, entry.subgenre1, entry.subgenre2].filter(Boolean).join(" / ");
@@ -1504,6 +1571,8 @@
         `;
         els.dictionaryResults.appendChild(row);
       });
+      els.dictionaryResultCount.textContent = `表示中 ${visibleMatches.length}件 / 該当 ${matches.length}件`;
+      els.loadMoreDictionary.hidden = visibleMatches.length >= matches.length;
     }
 
     function addDictionaryEntryToPrompt(entry) {
@@ -1688,6 +1757,7 @@
       if (mode === "replace" && !confirm("現在のタグ辞書を置き換えますか？")) return;
       state.tagDictionary = mode === "replace" ? entries : mergeDictionaryEntries(entries);
       els.dictionaryInput.value = "";
+      resetDictionaryVisibleLimit();
       saveState();
       renderDictionaryCategoryOptions();
       renderDictionaryResults();
@@ -1714,6 +1784,7 @@
       els.dictionarySearch.value = "";
       els.dictionaryInput.value = "";
       els.dictionaryFile.value = "";
+      resetDictionaryVisibleLimit();
       saveState();
       renderDictionaryCategoryOptions();
       renderDictionaryResults();
@@ -1754,6 +1825,7 @@
             selectedPromptMemoId: imported.selectedPromptMemoId || "",
             organized: migrateOrganizedSections(imported.organized || {})
           };
+          resetDictionaryVisibleLimit();
           saveState();
           renderAll();
           toast("JSONを読み込みました");
@@ -1863,20 +1935,33 @@
         }
       });
 
-      els.dictionarySearch.addEventListener("input", renderDictionaryResults);
+      els.dictionarySearch.addEventListener("input", () => {
+        resetDictionaryVisibleLimit();
+        renderDictionaryResults();
+      });
       els.dictionarySafetyFilter.addEventListener("change", () => {
+        resetDictionaryVisibleLimit();
         renderDictionaryCategoryOptions();
         renderDictionaryResults();
       });
       els.dictionaryGenreFilter.addEventListener("change", () => {
+        resetDictionaryVisibleLimit();
         renderDictionaryCategoryOptions();
         renderDictionaryResults();
       });
       els.dictionarySubgenre1Filter.addEventListener("change", () => {
+        resetDictionaryVisibleLimit();
         renderDictionaryCategoryOptions();
         renderDictionaryResults();
       });
-      els.dictionarySubgenre2Filter.addEventListener("change", renderDictionaryResults);
+      els.dictionarySubgenre2Filter.addEventListener("change", () => {
+        resetDictionaryVisibleLimit();
+        renderDictionaryResults();
+      });
+      els.loadMoreDictionary.addEventListener("click", () => {
+        dictionaryVisibleLimit += DICTIONARY_PAGE_SIZE;
+        renderDictionaryResults();
+      });
       els.dictionaryResults.addEventListener("click", (event) => {
         const addNode = event.target.closest("[data-add-dictionary]");
         if (addNode) {
@@ -1985,7 +2070,7 @@
         "toast", "floatingCopyFinal", "menuToggle", "jumpMenu", "sections",
         "togglePastePanel", "toggleDictionaryPanel",
         "dictionaryStats", "dictionarySearch", "dictionarySafetyFilter", "dictionaryGenreFilter", "dictionarySubgenre1Filter", "dictionarySubgenre2Filter",
-        "dictionaryResults", "dictionaryInput", "dictionaryFile", "appendDictionary", "replaceDictionary", "loadDictionaryFile", "resetDictionary",
+        "dictionaryResults", "dictionaryResultCount", "loadMoreDictionary", "dictionaryInput", "dictionaryFile", "appendDictionary", "replaceDictionary", "loadDictionaryFile", "resetDictionary",
         "finalPrompt", "negativePrompt", "charactersList",
         "characterName", "characterMemo", "saveCharacter", "overwriteCharacter",
         "organizeTags", "applyOrganized", "resetPastePanel", "pasteInput", "organizeSummary",
