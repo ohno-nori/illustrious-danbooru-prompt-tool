@@ -264,10 +264,6 @@
       font-size: 12px;
     }
 
-    .quick-search {
-      margin-bottom: 12px;
-    }
-
     details {
       border: 1px solid rgba(55, 65, 81, .7);
       border-radius: 8px;
@@ -281,38 +277,6 @@
       color: var(--text);
       font-weight: 700;
       list-style-position: inside;
-    }
-
-    .tag-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 7px;
-      padding: 0 10px 12px;
-    }
-
-    .tag-btn {
-      min-height: 30px;
-      padding: 5px 8px;
-      font-size: 12px;
-      background: #263244;
-      border-color: #465365;
-    }
-
-    .tag-btn.active {
-      background: rgba(139, 92, 246, .28);
-      border-color: var(--accent-2);
-      color: #ddd6fe;
-    }
-
-    .compact-block {
-      border-top: 1px solid rgba(55, 65, 81, .68);
-      margin-top: 14px;
-      padding-top: 12px;
-    }
-
-    .compact-block h3 {
-      margin: 0 0 8px;
-      font-size: 13px;
     }
 
     .inline-row {
@@ -527,7 +491,7 @@
 
     .dictionary-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr);
       gap: 8px;
       align-items: center;
       border: 1px solid rgba(55, 65, 81, .78);
@@ -590,20 +554,6 @@
       border-color: rgba(248, 113, 113, .5);
       color: #fecaca;
       background: rgba(127, 29, 29, .32);
-    }
-
-    .star-btn {
-      min-width: 38px;
-      min-height: 38px;
-      padding: 5px 8px;
-      font-size: 16px;
-      line-height: 1;
-    }
-
-    .star-btn.active {
-      color: var(--warn);
-      border-color: rgba(251, 191, 36, .75);
-      background: rgba(120, 53, 15, .26);
     }
 
     .file-input {
@@ -688,7 +638,7 @@
   <header>
     <div>
       <h1>Illustrious Danbooru Prompt Tool</h1>
-      <div class="muted">過去プロンプトの整理、辞書検索、お気に入りタグをブラウザ内で管理</div>
+      <div class="muted">過去プロンプトの整理、辞書検索、プロンプトメモをブラウザ内で管理</div>
       <div class="muted">使い方：過去プロンプトを貼り付け → タグ整理 → 整理結果を反映 → 編集して最終プロンプトをコピー</div>
     </div>
   </header>
@@ -700,7 +650,6 @@
     </div>
     <nav class="jump-menu" id="jumpMenu" aria-label="画面内メニュー">
       <a href="#pastePanel">タグ貼り付け整理</a>
-      <a href="#savedTagsPanel">お気に入りタグ</a>
       <a href="#dictionaryPanel">タグ辞書</a>
       <a href="#promptPanel">プロンプト編集</a>
       <a href="#outputPanel">最終出力</a>
@@ -726,24 +675,6 @@
         <div id="organizeSummary" class="summary-grid"></div>
       </div>
     </section>
-
-    <aside id="savedTagsPanel">
-      <div class="panel-head">
-        <h2>お気に入りタグ</h2>
-        <button id="toggleSavedTagsPanel" type="button" class="panel-toggle" data-toggle-panel="savedTagsPanel" aria-expanded="true">折りたたむ</button>
-      </div>
-      <div class="panel-body">
-        <input class="quick-search" id="tagSearch" type="search" placeholder="お気に入り・最近使ったタグを検索">
-        <div class="compact-block">
-          <h3>お気に入り</h3>
-          <div id="favoriteTags" class="tag-grid"></div>
-        </div>
-        <div class="compact-block">
-          <h3>最近使ったタグ</h3>
-          <div id="recentTags" class="tag-grid"></div>
-        </div>
-      </div>
-    </aside>
 
     <section class="tool-panel" id="dictionaryPanel">
       <div class="panel-head">
@@ -787,7 +718,7 @@
               <input id="dictionaryFile" class="file-input" type="file" accept=".csv,text/csv,application/json,.json,.txt,text/plain">
               <button id="loadDictionaryFile" type="button">ファイルから読み込み</button>
             </div>
-            <div class="muted">辞書CSV形式：ジャンル,サブジャンル1,サブジャンル2,ラベル,プロンプト,分類。分類は general / nsfw を使用します。プロンプト列はDanbooruタグ、またはカンマ区切りの複数タグに対応します。読み込んだ辞書は、タグ検索・お気に入り登録・最近使ったタグ・貼り付け整理時の分類補助に使われます。</div>
+            <div class="muted">辞書CSV形式：ジャンル,サブジャンル1,サブジャンル2,ラベル,プロンプト,分類。分類は general / nsfw を使用します。プロンプト列はDanbooruタグ、またはカンマ区切りの複数タグに対応します。読み込んだ辞書は、タグ検索・貼り付け整理時の分類補助に使われます。</div>
           </div>
         </details>
       </div>
@@ -918,8 +849,6 @@
       promptMemos: [],
       sectionMemos: Object.fromEntries(sectionDefs.map(([key]) => [key, []])),
       tagDictionary: defaultTagDictionary.map(normalizeDictionaryEntry),
-      favoriteTagIds: [],
-      recentTags: [],
       selectedPromptMemoId: "",
       organized: Object.fromEntries(sectionDefs.map(([key]) => [key, []]))
     };
@@ -938,10 +867,6 @@
         merged.tagDictionary = Array.isArray(parsed.tagDictionary)
           ? parsed.tagDictionary.map(normalizeDictionaryEntry).filter(Boolean)
           : structuredClone(defaultState.tagDictionary);
-        merged.favoriteTagIds = Array.isArray(parsed.favoriteTagIds) ? parsed.favoriteTagIds : [];
-        merged.recentTags = Array.isArray(parsed.recentTags)
-          ? parsed.recentTags.slice(0, 40).map((item) => ({ ...item, section: resolveSectionKey(item.section) }))
-          : [];
         merged.promptMemos = Array.isArray(parsed.promptMemos) ? parsed.promptMemos.map(migratePromptMemo).filter(Boolean) : [];
         merged.sectionMemos = normalizeSectionMemos(parsed.sectionMemos);
         merged.selectedPromptMemoId = parsed.selectedPromptMemoId || "";
@@ -1292,32 +1217,12 @@
       toast(label);
     }
 
-    function rememberRecentTag(sectionKey, tag, meta = {}) {
-      const normalized = normalizeTag(tag);
-      if (!normalized) return;
-      const resolvedSection = resolveSectionKey(sectionKey);
-      const item = {
-        tag: normalized,
-        section: resolvedSection,
-        japanese: meta.japanese || normalized,
-        category: meta.category || sectionLabel(resolvedSection),
-        safety: meta.safety || inferSafety(`${normalized} ${meta.japanese || ""}`),
-        usedAt: Date.now()
-      };
-      state.recentTags = [
-        item,
-        ...state.recentTags.filter((recent) => !(recent.tag.toLowerCase() === normalized.toLowerCase() && resolveSectionKey(recent.section) === resolvedSection))
-      ].slice(0, 40);
-    }
-
-    function addTagsToSection(sectionKey, tags, meta = {}) {
+    function addTagsToSection(sectionKey, tags) {
       const resolvedSection = resolveSectionKey(sectionKey);
       const current = splitTags(state.sections[resolvedSection]);
       state.sections[resolvedSection] = tagsToText([...current, ...tags]);
-      tags.forEach((tag) => rememberRecentTag(resolvedSection, tag, meta));
       saveState();
       renderSectionValue(resolvedSection);
-      renderRecentTags();
       updateFinalOutput();
     }
 
@@ -1519,87 +1424,6 @@
       toast(`${sectionLabel(resolvedSection)}メモを削除しました`);
     }
 
-    function renderFavoriteTags() {
-      els.favoriteTags.innerHTML = "";
-      const query = els.tagSearch.value.trim().toLowerCase();
-      const favoriteEntries = state.favoriteTagIds
-        .map((id) => state.tagDictionary.find((entry) => entry.id === id))
-        .filter(Boolean)
-        .filter((entry) => !query || dictionarySearchText(entry).includes(query));
-      if (!favoriteEntries.length) {
-        els.favoriteTags.innerHTML = `<div class="muted">未登録</div>`;
-        return;
-      }
-      const renderedIds = new Set();
-      sectionDefs.forEach(([section, label]) => {
-        const entries = favoriteEntries.filter((entry) => entry.section === section || (!entry.section && section === "other"));
-        if (!entries.length) return;
-        entries.forEach((entry) => renderedIds.add(entry.id));
-        const details = document.createElement("details");
-        details.open = Boolean(query);
-        const summary = document.createElement("summary");
-        summary.textContent = `${label} (${entries.length})`;
-        details.appendChild(summary);
-
-        const grid = document.createElement("div");
-        grid.className = "tag-grid";
-        entries.forEach((entry) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "tag-btn";
-          btn.textContent = entry.japanese || entry.tag;
-          btn.title = `${entry.tag} / ${entry.category}`;
-          btn.addEventListener("click", () => addDictionaryEntryToPrompt(entry));
-          grid.appendChild(btn);
-        });
-        details.appendChild(grid);
-        els.favoriteTags.appendChild(details);
-      });
-      const leftovers = favoriteEntries.filter((entry) => !renderedIds.has(entry.id));
-      if (leftovers.length) {
-        const details = document.createElement("details");
-        details.open = Boolean(query);
-        const summary = document.createElement("summary");
-        summary.textContent = `その他 (${leftovers.length})`;
-        details.appendChild(summary);
-        const grid = document.createElement("div");
-        grid.className = "tag-grid";
-        leftovers.forEach((entry) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "tag-btn";
-          btn.textContent = entry.japanese || entry.tag;
-          btn.title = `${entry.tag} / ${entry.category}`;
-          btn.addEventListener("click", () => addDictionaryEntryToPrompt(entry));
-          grid.appendChild(btn);
-        });
-        details.appendChild(grid);
-        els.favoriteTags.appendChild(details);
-      }
-    }
-
-    function renderRecentTags() {
-      els.recentTags.innerHTML = "";
-      const query = els.tagSearch.value.trim().toLowerCase();
-      const recentTags = state.recentTags.filter((recent) => {
-        const text = [recent.japanese, recent.tag, recent.category, recent.section].join(" ").toLowerCase();
-        return !query || text.includes(query);
-      });
-      if (!recentTags.length) {
-        els.recentTags.innerHTML = `<div class="muted">未使用</div>`;
-        return;
-      }
-      recentTags.slice(0, 32).forEach((recent) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "tag-btn";
-        btn.textContent = recent.japanese || recent.tag;
-        btn.title = `${recent.tag} / ${recent.category || sectionLabel(recent.section)}`;
-        btn.addEventListener("click", () => addTagsToSection(recent.section, [recent.tag], recent));
-        els.recentTags.appendChild(btn);
-      });
-    }
-
     function fillSelectOptions(select, label, values, current) {
       select.innerHTML = `<option value="all">${label}</option>`;
       values.forEach((value) => {
@@ -1663,7 +1487,6 @@
       matches.forEach((entry) => {
         const row = document.createElement("div");
         row.className = "dictionary-row";
-        const favorite = state.favoriteTagIds.includes(entry.id);
         const meta = [entry.genre, entry.subgenre1, entry.subgenre2].filter(Boolean).join(" / ");
         const title = [
           entry.description,
@@ -1678,7 +1501,6 @@
             <div class="tag-code">${escapeHtml(entry.tag)}</div>
             <div class="muted dictionary-meta">${escapeHtml(meta)}</div>
           </div>
-          <button class="star-btn ${favorite ? "active" : ""}" type="button" data-favorite-dictionary="${entry.id}" title="お気に入り">★</button>
         `;
         els.dictionaryResults.appendChild(row);
       });
@@ -1687,21 +1509,8 @@
     function addDictionaryEntryToPrompt(entry) {
       const normalized = normalizeDictionaryEntry(entry);
       if (!normalized) return;
-      addTagsToSection(normalized.section, [normalized.tag], normalized);
+      addTagsToSection(normalized.section, [normalized.tag]);
       toast(`${normalized.tag} を追加しました`);
-    }
-
-    function toggleFavoriteTag(id) {
-      if (state.favoriteTagIds.includes(id)) {
-        state.favoriteTagIds = state.favoriteTagIds.filter((item) => item !== id);
-        toast("お気に入りから外しました");
-      } else {
-        state.favoriteTagIds = [id, ...state.favoriteTagIds].slice(0, 100);
-        toast("お気に入りに追加しました");
-      }
-      saveState();
-      renderFavoriteTags();
-      renderDictionaryResults();
     }
 
     function renderPromptMemos() {
@@ -1759,7 +1568,6 @@
       saveState();
       renderSections();
       renderPromptMemos();
-      renderRecentTags();
       updateFinalOutput();
       toast("プロンプトメモを呼び出しました");
     }
@@ -1879,15 +1687,10 @@
       }
       if (mode === "replace" && !confirm("現在のタグ辞書を置き換えますか？")) return;
       state.tagDictionary = mode === "replace" ? entries : mergeDictionaryEntries(entries);
-      if (mode === "replace") {
-        const validIds = new Set(state.tagDictionary.map((entry) => entry.id));
-        state.favoriteTagIds = state.favoriteTagIds.filter((id) => validIds.has(id));
-      }
       els.dictionaryInput.value = "";
       saveState();
       renderDictionaryCategoryOptions();
       renderDictionaryResults();
-      renderFavoriteTags();
       toast(`${entries.length}件の辞書データを読み込みました`);
     }
 
@@ -1906,16 +1709,14 @@
     }
 
     function resetDictionary() {
-      if (!confirm("タグ辞書を空にしますか？ 追加済みの辞書データと辞書のお気に入りは消えます。")) return;
+      if (!confirm("タグ辞書を空にしますか？ 追加済みの辞書データは消えます。")) return;
       state.tagDictionary = [];
-      state.favoriteTagIds = [];
       els.dictionarySearch.value = "";
       els.dictionaryInput.value = "";
       els.dictionaryFile.value = "";
       saveState();
       renderDictionaryCategoryOptions();
       renderDictionaryResults();
-      renderFavoriteTags();
       toast("辞書を空にしました");
     }
 
@@ -1948,10 +1749,6 @@
             tagDictionary: Array.isArray(imported.tagDictionary)
               ? imported.tagDictionary.map(normalizeDictionaryEntry).filter(Boolean)
               : structuredClone(defaultState.tagDictionary),
-            favoriteTagIds: Array.isArray(imported.favoriteTagIds) ? imported.favoriteTagIds : [],
-            recentTags: Array.isArray(imported.recentTags)
-              ? imported.recentTags.slice(0, 40).map((item) => ({ ...item, section: resolveSectionKey(item.section) }))
-              : [],
             promptMemos: Array.isArray(imported.promptMemos) ? imported.promptMemos.map(migratePromptMemo).filter(Boolean) : [],
             sectionMemos: normalizeSectionMemos(imported.sectionMemos),
             selectedPromptMemoId: imported.selectedPromptMemoId || "",
@@ -1968,7 +1765,7 @@
     }
 
     function resetPromptSections() {
-      if (!confirm("プロンプト編集欄をすべて空にしますか？ 保存済みプロンプトメモ、辞書、お気に入り、最近使ったタグは残ります。")) return;
+      if (!confirm("プロンプト編集欄をすべて空にしますか？ 保存済みプロンプトメモ、セクションメモ、辞書は残ります。")) return;
       state.sections = structuredClone(defaultState.sections);
       state.organized = structuredClone(defaultState.organized);
       state.selectedPromptMemoId = "";
@@ -1984,8 +1781,6 @@
 
     function renderAll() {
       renderSections();
-      renderFavoriteTags();
-      renderRecentTags();
       renderDictionaryCategoryOptions();
       renderDictionaryResults();
       renderPromptMemos();
@@ -2007,7 +1802,6 @@
     function initializePanelCollapse() {
       const isMobile = window.matchMedia("(max-width: 760px)").matches;
       setPanelCollapsed("pastePanel", isMobile);
-      setPanelCollapsed("savedTagsPanel", isMobile);
       setPanelCollapsed("dictionaryPanel", isMobile);
     }
 
@@ -2069,10 +1863,6 @@
         }
       });
 
-      els.tagSearch.addEventListener("input", () => {
-        renderFavoriteTags();
-        renderRecentTags();
-      });
       els.dictionarySearch.addEventListener("input", renderDictionaryResults);
       els.dictionarySafetyFilter.addEventListener("change", () => {
         renderDictionaryCategoryOptions();
@@ -2088,12 +1878,7 @@
       });
       els.dictionarySubgenre2Filter.addEventListener("change", renderDictionaryResults);
       els.dictionaryResults.addEventListener("click", (event) => {
-        const favoriteId = event.target.dataset.favoriteDictionary;
         const addNode = event.target.closest("[data-add-dictionary]");
-        if (favoriteId) {
-          toggleFavoriteTag(favoriteId);
-          return;
-        }
         if (addNode) {
           const entry = state.tagDictionary.find((item) => item.id === addNode.dataset.addDictionary);
           if (entry) addDictionaryEntryToPrompt(entry);
@@ -2186,7 +1971,6 @@
         }
       });
       els.togglePastePanel.addEventListener("click", () => togglePanel("pastePanel"));
-      els.toggleSavedTagsPanel.addEventListener("click", () => togglePanel("savedTagsPanel"));
       els.toggleDictionaryPanel.addEventListener("click", () => togglePanel("dictionaryPanel"));
       document.addEventListener("click", (event) => {
         if (!event.target.closest(".menu-wrap")) {
@@ -2198,8 +1982,8 @@
 
     function boot() {
       [
-        "toast", "floatingCopyFinal", "menuToggle", "jumpMenu", "sections", "favoriteTags", "recentTags", "tagSearch",
-        "togglePastePanel", "toggleSavedTagsPanel", "toggleDictionaryPanel",
+        "toast", "floatingCopyFinal", "menuToggle", "jumpMenu", "sections",
+        "togglePastePanel", "toggleDictionaryPanel",
         "dictionaryStats", "dictionarySearch", "dictionarySafetyFilter", "dictionaryGenreFilter", "dictionarySubgenre1Filter", "dictionarySubgenre2Filter",
         "dictionaryResults", "dictionaryInput", "dictionaryFile", "appendDictionary", "replaceDictionary", "loadDictionaryFile", "resetDictionary",
         "finalPrompt", "negativePrompt", "charactersList",
